@@ -36,28 +36,26 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
         try {
             String token = ( ( ServletServerHttpRequest ) request ).getServletRequest().getHeader( Constants.WEBSOCKET_PROTOCOL );
             if ( !StringUtils.hasText( token ) ) {
-                log.error( "token为空" );
+                log.error( "There is no token!" );
                 return false;
             }
 
             // 开始鉴权
             Claims claims   = tokenService.parseToken( token );
-            String memberId = ( String ) claims.get( Constants.MEMBER_ID );
-            String agent = ( String ) claims.get( Constants.USERNAME );
-            if ( !StringUtils.hasText( memberId ) ) {
-                log.error( "会员ID获取失败" );
+            String username = ( String ) claims.get( Constants.USERNAME );
+            if ( !StringUtils.hasText( username ) ) {
+                log.error( "There is no username!" );
                 return false;
             }
 
-            Object resToken = stringRedisTemplate.opsForValue().get( Constants.USER_JJWT_KEY + memberId );
+            Object resToken = stringRedisTemplate.opsForValue().get( Constants.USER_JJWT_KEY + username );
             if ( resToken == null || !resToken.equals( token ) ) {
-                log.error( "token不匹配,会员ID:{}", memberId );
+                log.error( "token不匹配,username:{}", username );
                 return false;
             }
-            log.info( "会员{}连接上线", memberId );
+            log.info( "会员{}连接上线", username );
 
-            attributes.put( Constants.MEMBER_ID, memberId );
-            attributes.put( Constants.USERNAME, agent );
+            attributes.put( Constants.USERNAME, username );
 
             ( ( ServletServerHttpResponse ) response ).getServletResponse().setHeader( Constants.WEBSOCKET_PROTOCOL, token );
             return true;

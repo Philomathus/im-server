@@ -5,8 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class PrivateMessage {
+public class PrivateMessageDto {
     private String content;
-    private String username;
     private String to;
 }

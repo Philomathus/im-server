@@ -3,7 +3,6 @@ package com.feiwin.imserver.dto;
 import lombok.Data;
 
 @Data
-public class TokenAuth {
-    private String memberId;
+public class TokenAuthDto {
     private String username;
 }

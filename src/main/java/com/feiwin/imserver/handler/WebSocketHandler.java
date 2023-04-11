@@ -3,7 +3,7 @@ package com.feiwin.imserver.handler;
 import com.feiwin.imserver.constant.Constants;
 import com.feiwin.imserver.constant.MessageType;
 import com.feiwin.imserver.service.XmppService;
-import com.feiwin.imserver.utils.WsSendMessageUtils;
+import com.feiwin.imserver.utils.WebSocketMessageUtils;
 import com.feiwin.imserver.vo.WebSocketMessage;
 import io.micrometer.common.lang.NonNullApi;
 import jakarta.annotation.Resource;
@@ -30,11 +30,10 @@ public class WebSocketHandler extends AbstractWebSocketHandler {
     @Override
     public void afterConnectionEstablished( WebSocketSession session ) throws Exception {
         super.afterConnectionEstablished( session );
-        String memberId = session.getAttributes().getOrDefault( Constants.MEMBER_ID, Strings.EMPTY ).toString();
         String username = session.getAttributes().getOrDefault( Constants.USERNAME, Strings.EMPTY ).toString();
 
-        if(Constants.USERNAME_SESSION.containsKey(memberId)) {
-            WsSendMessageUtils.sendMessage(session,
+        if(Constants.USERNAME_SESSION.containsKey(username)) {
+            WebSocketMessageUtils.sendMessage(session,
                 WebSocketMessage.builder()
                     .messageType(MessageType.ERROR)
                     .content("The member already has an active session!")
@@ -50,7 +49,7 @@ public class WebSocketHandler extends AbstractWebSocketHandler {
         try {
             connectToXmppServer(session, username);
         } catch(Exception e) {
-            WsSendMessageUtils.sendMessage(session,
+            WebSocketMessageUtils.sendMessage(session,
                 WebSocketMessage.builder()
                     .messageType(MessageType.ERROR)
                     .content(e.getMessage())
@@ -96,10 +95,10 @@ public class WebSocketHandler extends AbstractWebSocketHandler {
         log.info("Connection was stored");
 
         xmppService.addIncomingMessageListener(connection, (from, message, chat) ->
-            WsSendMessageUtils.sendPersonalMessage(session, message)
+            WebSocketMessageUtils.sendPersonalMessage(session, message)
         );
 
-        WsSendMessageUtils.sendMessage(session,
+        WebSocketMessageUtils.sendMessage(session,
             WebSocketMessage.builder()
                 .messageType(MessageType.CONNECTED)
                 .to(username)
@@ -110,9 +109,9 @@ public class WebSocketHandler extends AbstractWebSocketHandler {
 
     @Override
     public void afterConnectionClosed( WebSocketSession session, CloseStatus status ) {
-        String memberId = session.getAttributes().getOrDefault( Constants.MEMBER_ID, "" ).toString();
+        String username = session.getAttributes().getOrDefault( Constants.USERNAME, "" ).toString();
 
-        Constants.USERNAME_SESSION.remove(memberId);
+        Constants.USERNAME_SESSION.remove(username);
         Constants.CONNECTIONS.remove(session);
     }
 
@@ -120,11 +119,11 @@ public class WebSocketHandler extends AbstractWebSocketHandler {
     public void handleTransportError( WebSocketSession session, Throwable exception ) throws Exception {
         super.handleTransportError( session, exception );
 
-        String memberId = session.getAttributes().getOrDefault( Constants.MEMBER_ID, "" ).toString();
+        String username = session.getAttributes().getOrDefault( Constants.USERNAME, "" ).toString();
         if ( exception instanceof EOFException ) {
-            //log.warn( "会员{}异常退出 EOFException", memberId );
+            //log.warn( "会员{}异常退出 EOFException", username );
         } else {
-            //log.error( "会员{}发生连接异常:{}", memberId, exception.getMessage(), exception );
+            //log.error( "会员{}发生连接异常:{}", username, exception.getMessage(), exception );
         }
     }
 }

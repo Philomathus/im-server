@@ -1,18 +1,13 @@
 package com.feiwin.imserver.controller;
 
-import com.feiwin.imserver.dto.PrivateMessage;
+import static com.feiwin.imserver.constant.Constants.USERNAME;
+import static com.feiwin.imserver.constant.Constants.TOKEN;
+import com.feiwin.imserver.dto.PrivateMessageDto;
 import com.feiwin.imserver.service.ImService;
+import com.feiwin.imserver.service.TokenService;
 import com.feiwin.imserver.vo.Response;
 import jakarta.annotation.Resource;
-import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
-import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.simp.annotation.SendToUser;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.security.Principal;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/private-chat")
@@ -21,17 +16,37 @@ public class PrivateChatController {
     @Resource
     private ImService imService;
 
-    @PostMapping("/message")
-    public Response sendMessage(PrivateMessage privateMessage, Principal principal) {
-        privateMessage.setUsername(principal.getName());
-        imService.sendPrivateMessage(privateMessage);
+    @Resource
+    private TokenService tokenService;
+
+    @PostMapping
+    public Response<?> sendMessage(@RequestBody PrivateMessageDto privateMessageDto, @RequestHeader(TOKEN) String token) {
+        String username = tokenService.getClaimsValueFromToken(USERNAME, token);
+        imService.sendPrivateMessage(username, privateMessageDto.getContent(), privateMessageDto.getTo());
         return Response.ok();
     }
 
-    @MessageExceptionHandler
-    @SendToUser("/queue/error")
-    public Response handleException(MessageException exception) {
-        return Response.fail(exception.getMessage(), exception.getUuid());
+    @GetMapping
+    public Response<?> getAll(@RequestHeader(TOKEN) String token) {
+        String username = tokenService.getClaimsValueFromToken(USERNAME, token);
+        return Response.ok( imService.getUsersConversingWithUsername(username) );
     }
 
+    @GetMapping("/{otherUsername}")
+    public Response<?> getHistory(@PathVariable String otherUsername, @RequestHeader(TOKEN) String token) {
+        String username = tokenService.getClaimsValueFromToken(USERNAME, token);
+        return Response.ok();
+    }
+
+    @DeleteMapping("/{otherUsername}")
+    public Response<?> delete(@PathVariable String otherUsername, @RequestHeader(TOKEN) String token) {
+        String username = tokenService.getClaimsValueFromToken(USERNAME, token);
+        return Response.ok();
+    }
+
+    @DeleteMapping("/{otherUsername}/{privateMessageId}")
+    public Response<?> deletePrivateMessage(@PathVariable String otherUsername, @PathVariable String privateMessageId, @RequestHeader(TOKEN) String token) {
+        String username = tokenService.getClaimsValueFromToken(USERNAME, token);
+        return Response.ok();
+    }
 }

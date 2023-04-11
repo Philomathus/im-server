@@ -1,22 +1,22 @@
 package com.feiwin.imserver.service;
 
-import com.feiwin.imserver.annotation.FieldName;
-import com.feiwin.imserver.constant.MessageType;
-import com.feiwin.imserver.dto.PrivateMessage;
-import com.feiwin.imserver.dto.RoomCreation;
-import com.feiwin.imserver.dto.RoomMessage;
-import com.feiwin.imserver.dto.RoomUser;
-import com.feiwin.imserver.utils.WsSendMessageUtils;
-import com.feiwin.imserver.vo.WebSocketMessage;
+import com.feiwin.imserver.model.PrivateChat;
+import com.feiwin.imserver.model.PrivateMessage;
+import com.feiwin.imserver.model.User;
+import com.feiwin.imserver.repository.PrivateChatRepository;
+import com.feiwin.imserver.repository.PrivateMessageRepository;
+import com.feiwin.imserver.utils.WebSocketMessageUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.lang.reflect.Field;
-import java.util.HashMap;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.feiwin.imserver.constant.Constants.CONNECTIONS;
 import static com.feiwin.imserver.constant.Constants.USERNAME_SESSION;
@@ -24,61 +24,78 @@ import static com.feiwin.imserver.constant.Constants.USERNAME_SESSION;
 @Service
 @Slf4j
 public class ImService {
-
     @Resource
     private XmppService xmppService;
-    
-    public void sendPrivateMessage(PrivateMessage privateMessage) {
-        WebSocketSession webSocketSession = USERNAME_SESSION.get(privateMessage.getUsername());
+    @Resource
+    private PrivateChatRepository privateChatRepository;
+    @Resource
+    private PrivateMessageRepository privateMessageRepository;
 
-        xmppService.sendPrivateMessage(CONNECTIONS.get(webSocketSession), privateMessage.getContent(), privateMessage.getTo());
-    }
-    
-    public void sendRoomMessage(RoomMessage roomMessage) {
-        WebSocketSession webSocketSession = USERNAME_SESSION.get(roomMessage.getUsername());
-        xmppService.sendRoomMessage(CONNECTIONS.get(webSocketSession), roomMessage.getRoomId(), roomMessage.getContent());
-    }
+    public void sendPrivateMessage(String username, String content, String to) {
+        xmppService.sendPrivateMessage(getConnectionByUsername(username), content, to);
 
-    public void createRoom(RoomCreation roomCreation) {
-        WebSocketSession webSocketSession = USERNAME_SESSION.get(roomCreation.getUsername());
+        User[] users = { new User(username), new User(to) };
 
-        Map<String, String> settings = new HashMap<>();
+        PrivateChat privateChat = privateChatRepository.queryPrivateChatByUsers(username, to);
 
-        for(Field field : RoomCreation.class.getDeclaredFields()) {
-            FieldName fieldNameAnnotation = field.getAnnotation(FieldName.class);
-
-            if(fieldNameAnnotation != null) {
-                field.setAccessible(true);
-
-                try {
-                    settings.put(fieldNameAnnotation.value(), Objects.toString(field.get(roomCreation), null));
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
-                }
-            }
+        if(privateChat == null) {
+            privateChat = privateChatRepository.insert( new PrivateChat( users ) );
         }
 
+        privateMessageRepository.insert( new PrivateMessage( privateChat.getId(), users[0], users[1], content, LocalDateTime.now() ) );
+    }
+
+    public List<String> getUsersConversingWithUsername(String username) {
+        List<PrivateChat> privateChats = privateChatRepository.queryPrivateChatsByUser(username);
+
+        if(CollectionUtils.isEmpty(privateChats)) {
+            return Collections.emptyList();
+        }
+
+        return privateChats.stream()
+            .map(privateChat -> {
+                String user1 = privateChat.getUsers()[0].getUsername();
+                String user2 = privateChat.getUsers()[1].getUsername();
+                return username.equals(user1) ? user2 : user1;
+            })
+            .toList();
+    }
+
+    public List<PrivateMessage> getPrivateMessageHistory(String user1, String user2) {
+
+        return null;
+    }
+    
+    public void sendRoomMessage(String username, String roomId, String content) {
+        xmppService.sendRoomMessage(getConnectionByUsername(username), roomId, content);
+    }
+
+    public void createRoom(String username, String roomId, Map<String, String> settings) {
+        WebSocketSession webSocketSession = USERNAME_SESSION.get(username);
+
         xmppService.createRoom(CONNECTIONS.get(webSocketSession),
-            roomCreation.getRoomId(),
+            roomId,
             settings,
-            msg -> WsSendMessageUtils.sendRoomMessage(webSocketSession, msg)
+            msg -> WebSocketMessageUtils.sendRoomMessage(webSocketSession, msg)
         );
     }
     
-    public void joinRoom(RoomUser roomUser) {
-        WebSocketSession webSocketSession = USERNAME_SESSION.get(roomUser.getUsername());
+    public void joinRoom(String username, String roomId) {
+        WebSocketSession webSocketSession = USERNAME_SESSION.get(username);
 
-        xmppService.joinRoom(CONNECTIONS.get(webSocketSession), roomUser.getRoomId(),
-            msg -> WsSendMessageUtils.sendRoomMessage(webSocketSession, msg));
+        xmppService.joinRoom(CONNECTIONS.get(webSocketSession), roomId,
+            msg -> WebSocketMessageUtils.sendRoomMessage(webSocketSession, msg));
     } 
     
-    public void leaveRoom(RoomUser roomUser) {
-        WebSocketSession webSocketSession = USERNAME_SESSION.get(roomUser.getUsername());
-        xmppService.leaveRoom(CONNECTIONS.get(webSocketSession), roomUser.getRoomId());
+    public void leaveRoom(String username, String roomId) {
+        xmppService.leaveRoom(getConnectionByUsername(username), roomId);
     }
     
-    public void destroyRoom(RoomUser roomUser) {
-        WebSocketSession webSocketSession = USERNAME_SESSION.get(roomUser.getUsername());
-        xmppService.destroyRoom(CONNECTIONS.get(webSocketSession), roomUser.getRoomId());
+    public void destroyRoom(String username, String roomId) {
+        xmppService.destroyRoom(getConnectionByUsername(username), roomId);
+    }
+
+    private static XMPPTCPConnection getConnectionByUsername(String username) {
+        return CONNECTIONS.get(USERNAME_SESSION.get(username));
     }
 }

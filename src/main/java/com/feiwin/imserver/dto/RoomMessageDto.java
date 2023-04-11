@@ -5,8 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class RoomMessage {
+public class RoomMessageDto {
     private String content;
     private String roomId;
-    private String username;
 }

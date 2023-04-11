@@ -16,8 +16,8 @@ import static org.jivesoftware.smackx.address.MultipleRecipientManager.send;
 
 @Component
 @Log4j2
-public class WsSendMessageUtils {
-    private static WsSendMessageUtils me;
+public class WebSocketMessageUtils {
+    private static WebSocketMessageUtils me;
 
     @PostConstruct
     void init() {
@@ -74,15 +74,15 @@ public class WsSendMessageUtils {
         if ( webSocketSession == null ) {
             return;
         }
-        String memberId = webSocketSession.getAttributes().getOrDefault( Constants.MEMBER_ID, "" ).toString();
+        String username = webSocketSession.getAttributes().getOrDefault( Constants.USERNAME, "" ).toString();
         if ( webSocketSession.isOpen() ) {
             try {
                 webSocketSession.sendMessage( new TextMessage( messageBody ) );
-                //log.info( "会员{}发送消息成功 - 消息:{}", memberId, messageBody );
+                //log.info( "会员{}发送消息成功 - 消息:{}", username, messageBody );
             } catch ( Exception e ) {
                 if ( retryNum == 1 ) {
-                    log.error( "会员{}发送消息发生错误:{}", memberId, e.getMessage(), e );
-                    sendClose( webSocketSession, memberId );
+                    log.error( "会员{}发送消息发生错误:{}", username, e.getMessage(), e );
+                    sendClose( webSocketSession, username );
                     return;
                 }
                 try {
@@ -93,7 +93,7 @@ public class WsSendMessageUtils {
                 sendMessage( webSocketSession, messageBody, retryNum );
             }
         } else {
-            log.error( "会员{}的webSocketSession已关闭,无法发送消息", memberId );
+            log.error( "会员{}的webSocketSession已关闭,无法发送消息", username );
             try {
                 Thread.sleep( 800L );
             } catch ( Exception ignored ) {
@@ -103,7 +103,7 @@ public class WsSendMessageUtils {
                 try {
                     webSocketSession.sendMessage( new TextMessage( messageBody ) );
                 } catch ( Exception ignored ) {
-                    sendClose( webSocketSession, memberId );
+                    sendClose( webSocketSession, username );
                 }
             }
         }

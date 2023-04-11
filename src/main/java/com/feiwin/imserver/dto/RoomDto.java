@@ -6,9 +6,8 @@ import lombok.Data;
 
 @Data
 @Builder
-public class RoomCreation {
+public class RoomDto {
     private String roomId;
-    private String username;
 
     @FieldName("muc#roomconfig_persistentroom")
     private Boolean isPersistent = false;

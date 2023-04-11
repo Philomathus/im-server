@@ -1,7 +1,7 @@
 package com.feiwin.imserver.controller;
 
 import com.feiwin.imserver.constant.Constants;
-import com.feiwin.imserver.dto.TokenAuth;
+import com.feiwin.imserver.dto.TokenAuthDto;
 import io.jsonwebtoken.lang.Maps;
 import jakarta.annotation.Resource;
 import lombok.extern.log4j.Log4j2;
@@ -23,11 +23,10 @@ public class TokenController {
     private TokenService tokenService;
 
     @PostMapping("/auth")
-    public String auth(@RequestBody TokenAuth tokenAuth) {
-        String token = tokenService.createToken( Maps.of( Constants.MEMBER_ID, tokenAuth.getMemberId() )
-                                                     .and( Constants.USERNAME, tokenAuth.getUsername() ).build() );
+    public String auth(@RequestBody TokenAuthDto tokenAuthDto) {
+        String token = tokenService.createToken( Maps.of( Constants.USERNAME, tokenAuthDto.getUsername() ).build() );
         stringRedisTemplate.opsForValue()
-                .set( Constants.USER_JJWT_KEY + tokenAuth.getMemberId(), token, Duration.ofDays( 3 ) );
+                .set( Constants.USER_JJWT_KEY + tokenAuthDto.getUsername(), token, Duration.ofDays( 3 ) );
         return token;
     }
 }

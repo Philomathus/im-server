@@ -7,14 +7,11 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class FilterConfig {
-
     @Bean
     public FilterRegistrationBean<JwtFilter> jwtFilter() {
         FilterRegistrationBean<JwtFilter> filter = new FilterRegistrationBean<>();
         filter.setFilter(new JwtFilter());
-
-        filter.addUrlPatterns("/api/**");
+        filter.addUrlPatterns("/room/*", "/private-chat/*");
         return filter;
     }
-
 }
