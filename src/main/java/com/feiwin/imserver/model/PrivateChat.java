@@ -4,14 +4,21 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Data
 @RequiredArgsConstructor
-@Document("PrivateChat")
+@Document("privateChats")
 public class PrivateChat {
     @Id
     private String id;
 
-    private final User[] users;
+    @NonNull
+    private User[] users;
+
+    @NonNull
+    private LocalDateTime createdAt;
+
+    @NonNull
+    private LocalDateTime updatedAt;
 }

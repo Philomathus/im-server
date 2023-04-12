@@ -8,6 +8,7 @@ import com.feiwin.imserver.repository.PrivateMessageRepository;
 import com.feiwin.imserver.utils.WebSocketMessageUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -30,7 +31,7 @@ public class ImService {
     private PrivateChatRepository privateChatRepository;
     @Resource
     private PrivateMessageRepository privateMessageRepository;
-
+    
     public void sendPrivateMessage(String username, String content, String to) {
         xmppService.sendPrivateMessage(getConnectionByUsername(username), content, to);
 
@@ -39,7 +40,7 @@ public class ImService {
         PrivateChat privateChat = privateChatRepository.queryPrivateChatByUsers(username, to);
 
         if(privateChat == null) {
-            privateChat = privateChatRepository.insert( new PrivateChat( users ) );
+            privateChat = privateChatRepository.insert( new PrivateChat( users, LocalDateTime.now(), LocalDateTime.now() ) );
         }
 
         privateMessageRepository.insert( new PrivateMessage( privateChat.getId(), users[0], users[1], content, LocalDateTime.now() ) );
@@ -62,8 +63,51 @@ public class ImService {
     }
 
     public List<PrivateMessage> getPrivateMessageHistory(String user1, String user2) {
+        PrivateChat privateChat = privateChatRepository.queryPrivateChatByUsers(user1, user2);
 
-        return null;
+        if(privateChat == null) {
+            return Collections.emptyList();
+        }
+
+        List<PrivateMessage> privateMessages = privateMessageRepository.getPrivateMessagesOnUserSideByPrivateChatId( user1, privateChat.getId() );
+
+        if(CollectionUtils.isEmpty(privateMessages)) {
+            return Collections.emptyList();
+        }
+
+        return privateMessages;
+    }
+
+    public void deletePrivateChatByUsers(String user1, String user2) {
+        PrivateChat privateChat = privateChatRepository.queryPrivateChatByUsers(user1, user2);
+
+        if(privateChat == null) {
+            return;
+        }
+
+        for(User user : privateChat.getUsers()) {
+            if(StringUtils.equals( user1, user.getUsername() )) {
+                user.setHasDeleted(true);
+                privateChatRepository.save(privateChat);
+                return;
+            }
+        }
+    }
+
+    public void deletePrivateMessageOnUserSideById(String username, String privateMessageId) {
+        PrivateMessage privateMessage = privateMessageRepository.findById( privateMessageId ).orElse(null);
+
+        if(privateMessage == null) {
+            return;
+        }
+
+        for(User user : new User[] { privateMessage.getSender(), privateMessage.getReceiver() }) {
+            if(StringUtils.equals(username, user.getUsername())) {
+                user.setHasDeleted(true);
+                privateMessageRepository.save(privateMessage);
+                return;
+            }
+        }
     }
     
     public void sendRoomMessage(String username, String roomId, String content) {
@@ -85,7 +129,7 @@ public class ImService {
 
         xmppService.joinRoom(CONNECTIONS.get(webSocketSession), roomId,
             msg -> WebSocketMessageUtils.sendRoomMessage(webSocketSession, msg));
-    } 
+    }
     
     public void leaveRoom(String username, String roomId) {
         xmppService.leaveRoom(getConnectionByUsername(username), roomId);
@@ -93,6 +137,18 @@ public class ImService {
     
     public void destroyRoom(String username, String roomId) {
         xmppService.destroyRoom(getConnectionByUsername(username), roomId);
+    }
+
+    public List<String> getAllRooms() {
+        return xmppService.getAllRooms();
+    }
+
+    public List<String> getJoinedRooms(String username) {
+        return xmppService.getJoinedRooms(getConnectionByUsername(username));
+    }
+
+    public List<String> getRoomOccupants(String username, String roomId) {
+        return xmppService.getRoomOccupants(getConnectionByUsername(username), roomId);
     }
 
     private static XMPPTCPConnection getConnectionByUsername(String username) {

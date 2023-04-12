@@ -1,0 +1,9 @@
+spring:
+  data:
+    mongodb:
+      host: localhost
+    redis:
+      host: localhost
+
+openfire:
+  host: 16.163.77.104

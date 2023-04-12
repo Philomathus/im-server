@@ -9,9 +9,17 @@ import java.util.List;
 
 public interface PrivateChatRepository extends MongoRepository<PrivateChat, String> {
 
-    @Query(value = "{ users: { $all: [ { username: '?0', hasDeleted: false }, { username: '?1' } ] } }")
+    @Query( sort = "{ updatedAt: -1 }",
+    value = """
+    {
+        $and: [
+            { users: { $elemMatch: { username: '?0', hasDeleted: false } } },
+            { 'users.username': '?1' }
+        ]
+    }
+    """)
     PrivateChat queryPrivateChatByUsers(String user1, String user2);
 
-    @Query("{ users: { username: '?0', hasDeleted: false } }")
+    @Query( sort = "{ updatedAt: -1 }", value = "{ users: { $elemMatch: { username: '?0', hasDeleted: false } } }")
     List<PrivateChat> queryPrivateChatsByUser(String user);
 }

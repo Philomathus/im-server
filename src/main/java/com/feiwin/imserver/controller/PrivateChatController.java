@@ -35,18 +35,20 @@ public class PrivateChatController {
     @GetMapping("/{otherUsername}")
     public Response<?> getHistory(@PathVariable String otherUsername, @RequestHeader(TOKEN) String token) {
         String username = tokenService.getClaimsValueFromToken(USERNAME, token);
-        return Response.ok();
+        return Response.ok( imService.getPrivateMessageHistory(username, otherUsername) );
     }
 
     @DeleteMapping("/{otherUsername}")
     public Response<?> delete(@PathVariable String otherUsername, @RequestHeader(TOKEN) String token) {
         String username = tokenService.getClaimsValueFromToken(USERNAME, token);
+        imService.deletePrivateChatByUsers(username, otherUsername);
         return Response.ok();
     }
 
-    @DeleteMapping("/{otherUsername}/{privateMessageId}")
-    public Response<?> deletePrivateMessage(@PathVariable String otherUsername, @PathVariable String privateMessageId, @RequestHeader(TOKEN) String token) {
+    @DeleteMapping("/{privateMessageId}")
+    public Response<?> deletePrivateMessage(@PathVariable String privateMessageId, @RequestHeader(TOKEN) String token) {
         String username = tokenService.getClaimsValueFromToken(USERNAME, token);
+        imService.deletePrivateMessageOnUserSideById(username, privateMessageId);
         return Response.ok();
     }
 }

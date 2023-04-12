@@ -65,20 +65,19 @@ public class RoomController {
 
     @GetMapping
     public Response<?> getAll() {
-        //TODO: implement
-        return Response.ok();
+        return Response.ok(imService.getAllRooms());
     }
 
     @GetMapping("/joined")
     public Response<?> getJoined(@RequestHeader(TOKEN) String token) {
-        //TODO: implement
-        return Response.ok();
+        String username = tokenService.getClaimsValueFromToken(USERNAME, token);
+        return Response.ok(imService.getJoinedRooms(username));
     }
 
-    @GetMapping("/{roomId}/member")
-    public Response<?> getMembers(@PathVariable String roomId) {
-        //TODO: implement
-        return Response.ok();
+    @GetMapping("/{roomId}/occupant")
+    public Response<?> getOccupants(@PathVariable String roomId, @RequestHeader(TOKEN) String token) {
+        String username = tokenService.getClaimsValueFromToken(USERNAME, token);
+        return Response.ok(imService.getRoomOccupants(username, roomId));
     }
 
     private static Map<String, String> getSettings(RoomDto roomDto) {

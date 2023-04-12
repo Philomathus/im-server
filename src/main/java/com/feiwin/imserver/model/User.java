@@ -5,6 +5,7 @@ import lombok.*;
 @Data
 @RequiredArgsConstructor
 public class User {
-    private final String username;
+    @NonNull
+    private String username;
     private Boolean hasDeleted = false;
 }
